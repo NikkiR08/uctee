@@ -5,6 +5,14 @@ Version: 0.1.0
 Author: Nichola R Naylor
 Maintainer: Nichola R Naylor <nichola.r.naylor@gmail.com>
 Description: An R package for transforming tables of unit costs from different “country setting”, “study currency” and “cost year” inputs and return outputs in pre-specified units.
-License: MIT-License
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    countrycode,
+    data.table,
+    dplyr,
+    wbstats,
+    tidyverse
+RoxygenNote: 7.2.3
+Roxygen: list(markdown = TRUE)

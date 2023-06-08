@@ -1,7 +1,5 @@
 ########### INFLATION CODE
 
-##!!! note still getting warning messages, if time to check these more
-
 library(wbstats)
 library(data.table)
 library(dplyr)
@@ -43,14 +41,14 @@ load("data_all/currency_country.RData")
 
 ##### Defining Eurozone exchange rates
 ## EMU not in wbstats download
-### downloaded csv of "PA.NUS.FCRF" https://data.worldbank.org/indicator/PA.NUS.FCRF 
+### downloaded csv of "PA.NUS.FCRF" https://data.worldbank.org/indicator/PA.NUS.FCRF
 # 12/03/2021 ## LCU per 1$
 euro_wb_exc <- read.csv("data_all/PA_NUS_FCRF_20210312.csv") %>%
                   as.data.table()
 euro_wb_exc <- euro_wb_exc[Country.Code=="EMU"]
-var.n <- ncol(euro_wb_exc) 
+var.n <- ncol(euro_wb_exc)
 euro_wb_exc <-  melt(euro_wb_exc, id.vars = 1:4,
-             measure.vars = 5:var.n, value.name="eu_val") %>% 
+             measure.vars = 5:var.n, value.name="eu_val") %>%
               as.data.table()
 euro_wb_exc[ , date := as.numeric(substring(euro_wb_exc$variable, 2))]
 
@@ -59,9 +57,9 @@ euro_wb_exc[ , date := as.numeric(substring(euro_wb_exc$variable, 2))]
 # 25/03/21 ## annual % change
 euro_wb_gdp <- read.csv("data_all/NY_GDP_DEFL_KD_ZG_EUR-20210325.csv") %>%
   as.data.table()
-var.n <- ncol(euro_wb_gdp) 
+var.n <- ncol(euro_wb_gdp)
 euro_wb_gdp <-  melt(euro_wb_gdp, id.vars = 1:4,
-                     measure.vars = 5:var.n, value.name="eu_val") %>% 
+                     measure.vars = 5:var.n, value.name="eu_val") %>%
   as.data.table()
 euro_wb_gdp[ , date := as.numeric(substring(euro_wb_gdp$variable, 2))]
 
@@ -75,7 +73,7 @@ inf_xch_data <- inf_xch_data %>%
 inf_eur <- inf_xch_data[currency_code=="EUR"]
 inf_Neur <- inf_xch_data[currency_code!="EUR"]
 
-### need to replace XC rate for EUR 
+### need to replace XC rate for EUR
 inf_eur <- merge(inf_eur, euro_wb_exc, by="date")
 inf_eur$PA.NUS.FCRF <- inf_eur$eu_val
 inf_eur <- inf_eur %>%
@@ -86,7 +84,7 @@ inf_eur <- inf_eur %>%
 inf_xch_4function <- rbind(inf_eur, inf_Neur)
 
 inf_xch_4function <- inf_xch_4function %>%
-  filter(!is.na(NY.GDP.DEFL.ZS) & 
+  filter(!is.na(NY.GDP.DEFL.ZS) &
            !is.na(PA.NUS.FCRF)) %>% ## remove if no deflation data and no exchange rate data
             as.data.table()
 rm(inf_xch_data) ## remove old data table to avoid confusion
@@ -97,36 +95,36 @@ eur_ppp <- read.csv("data_all/EUR_PPP.csv") %>%
               as.data.table()
 
 
-#### FUNCTION FOR THE LITERATURE COSTS
+# #### FUNCTION FOR THE LITERATURE COSTS
 cost_adj_lit <- function(to_year,
                                  cost_dt_row,
                                   column_ref_cost,
                                    inf_xch_dt) {
-  
-  ## to_year is a numeric 
+
+  ## to_year is a numeric
   ## cost_dt_row a row of the literature extract
   ## column_ref_cost the column with the "to_cost" to be adjusted
   ## inf_xch_dt is the exchange rate and inflation dataset created above
   ## needs currency_country dataset preloaded to run (see above in this script)
-  
+
   #### !!! note if you have other currencies with other regions not listed in this function
   ## (e.g. CAD for a non-Canadian country)
   # would need to add more code in here to account for this
-  
+
   #### first pulling out the data we need for conversions
-  iso <- as.character(cost_dt_row$iso3c) ## country of study 
+  iso <- as.character(cost_dt_row$iso3c) ## country of study
   from_cost <- cost_dt_row[[column_ref_cost]] ## cost to be adapted
   from_year <- as.numeric(cost_dt_row$cost_year) ## base year
   ## see if dates in set
-  from_year_data <- inf_xch_dt[date == from_year] ## from year financial data 
-  to_year_data <- inf_xch_dt[date == to_year] ## to year financial data 
+  from_year_data <- inf_xch_dt[date == from_year] ## from year financial data
+  to_year_data <- inf_xch_dt[date == to_year] ## to year financial data
   temp_iso_dt <- inf_xch_dt[iso3c==iso]  ## to be used in calculations below
-  
+
     ### !!! if get error on future iterations try to add more variations on which to use
     # if both base and cost_currency and currency_code unavailable in inflation/exchange rates
     # added complexity that was not needed in this run/project so not done in this iteration
-  
-  if(cost_dt_row$iso3c=="EUSA"&cost_dt_row$cost_currency=="EUR"& cost_dt_row$who.region=="EURO"){
+
+  if(cost_dt_row$iso3c=="EMU"&cost_dt_row$cost_currency=="EUR"& cost_dt_row$who.region=="EURO"){
   #### IF iso3 is NA & COST_CURRENCY = EUR AND REGION = EURO
   ## inflate based on average GDP deflator growth
   gdp_i_av <- euro_wb_gdp[date<=to_year & date >= from_year]
@@ -153,7 +151,7 @@ cost_adj_lit <- function(to_year,
     group_by(date, currency_code) %>%
     filter(row_number() == 1)%>% ## take just 1 per study + who.region/region combination
     as.data.table()
-  
+
   from_year_index <- euro_exchange[date == from_year]
   ## convert to EUR
   from_index_est <- from_cost*from_year_index$PA.NUS.FCRF
@@ -165,46 +163,46 @@ cost_adj_lit <- function(to_year,
   eur_usd_xc <- euro_exchange[date==to_year,"PA.NUS.FCRF"]
   to_cost <- as.numeric(to_index_est/eur_usd_xc)
   }
-  
+
   else if (cost_dt_row$iso3c!="EUSA"&cost_dt_row$cost_currency!=cost_dt_row$currency_code& cost_dt_row$cost_currency=="EUR"){
   ### IF iso3 != na and cost_currency!=currency_code & (currency = EUR)
-  ## convert to USD then to local currency 
+  ## convert to USD then to local currency
     euro_exchange <- inf_xch_dt[currency_code=="EUR"]
     ## get so just one per year
     euro_exchange <- euro_exchange %>%
     group_by(date, currency_code) %>%
     filter(row_number() == 1)%>% ## take just 1 per study + who.region/region combination
     as.data.table()
-    
+
   eur_usd_xc <- euro_exchange[date==from_year,"PA.NUS.FCRF"]
   usd_lcu_xc <- inf_xch_dt[date==from_year &
                              iso3c==iso,"PA.NUS.FCRF"]
   xc_cost <- as.numeric(from_cost*(1/eur_usd_xc)*usd_lcu_xc)
-  from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"] 
+  from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"]
   to_index <-   temp_iso_dt[temp_iso_dt$date == to_year, "NY.GDP.DEFL.ZS"]
   to_cost <- xc_cost * (to_index/from_index)
   ## then convert back to USD 2019
   usd_xc <-   temp_iso_dt[date==to_year,"PA.NUS.FCRF"]
   to_cost <- as.numeric(to_cost/usd_xc)
-  } 
-  else if (cost_dt_row$iso3c!="EUSA"& cost_dt_row$cost_currency!=cost_dt_row$currency_code& 
+  }
+  else if (cost_dt_row$iso3c!="EUSA"& cost_dt_row$cost_currency!=cost_dt_row$currency_code&
              cost_dt_row$cost_currency=="USD"){
   ### IF iso3 != na and cost_currency!=currency_code & (currency = US)
-  ## convert to local currency 
+  ## convert to local currency
   usd_lcu_xc <- inf_xch_dt[date==from_year &
                              iso3c==iso,"PA.NUS.FCRF"]
   xc_cost <- as.numeric(from_cost*usd_lcu_xc)
-  from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"] 
+  from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"]
   to_index <-   temp_iso_dt[temp_iso_dt$date == to_year, "NY.GDP.DEFL.ZS"]
   to_cost <- xc_cost * (to_index/from_index)
   ## then convert back to USD 2019
   usd_xc <-   temp_iso_dt[date==to_year,"PA.NUS.FCRF"]
   to_cost <- as.numeric(to_cost/usd_xc)
-  } 
+  }
   else if (cost_dt_row$iso3c!="EUSA"&
            cost_dt_row$cost_currency==cost_dt_row$currency_code) {
   ### IF  iso3 != na and cost_currency==currency_code
-  from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"] 
+  from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"]
   to_index <-   temp_iso_dt[temp_iso_dt$date == to_year, "NY.GDP.DEFL.ZS"]
   to_cost <- from_cost * (to_index/from_index)
   ## then convert to USD 2019
@@ -230,17 +228,17 @@ inflation_exchange_PPP <- function(from_year,
   inf_xch_dt<- inf_xch_dt %>%
     filter(!is.na(PA.NUS.PPP)) %>% ## remove if no PPP data
     as.data.table()
-  
-   iso <- as.character(cost_dt_row$iso3c) 
+
+   iso <- as.character(cost_dt_row$iso3c)
   from_cost <- cost_dt_row[[column_ref_cost]]
   ## see if dates in set
   test <- inf_xch_dt[date == from_year]
   test2 <- inf_xch_dt[date == to_year]
   if (iso %in% test$iso3c==TRUE & iso %in% test2$iso3c){
-    temp <- inf_xch_dt[iso3c==iso] 
-    ## first convert exchange rate back to LCU using PPP 
+    temp <- inf_xch_dt[iso3c==iso]
+    ## first convert exchange rate back to LCU using PPP
     xc_cost <- from_cost*temp[date==from_year,PA.NUS.PPP]
-    from_index <- temp[temp$date == from_year,"NY.GDP.DEFL.ZS"] 
+    from_index <- temp[temp$date == from_year,"NY.GDP.DEFL.ZS"]
     to_index <- temp[temp$date == to_year, "NY.GDP.DEFL.ZS"]
     to_cost <- xc_cost * (to_index/from_index)
     ## then convert back to USD 2019
@@ -248,10 +246,10 @@ inflation_exchange_PPP <- function(from_year,
     to_cost <- as.numeric(to_cost/usd_xc)
   } else {
     ## use the US inflation to 2019
-    temp <- inf_xch_dt[iso3c=="USA"] 
+    temp <- inf_xch_dt[iso3c=="USA"]
     ## first convert exchange rate back to LCU (US)
     xc_cost <- from_cost*temp[date==from_year,PA.NUS.PPP]
-    from_index <- temp[temp$date == from_year, "NY.GDP.DEFL.ZS"] 
+    from_index <- temp[temp$date == from_year, "NY.GDP.DEFL.ZS"]
     to_index <- temp[temp$date == to_year, "NY.GDP.DEFL.ZS"]
     to_cost <- as.numeric(xc_cost * (to_index/from_index))
   }
@@ -272,30 +270,30 @@ cost_adj_abx <- function(to_year,
                          cost_dt_row,
                          column_ref_cost,
                          inf_xch_dt) {
-  
-  ## to_year is a numeric 
+
+  ## to_year is a numeric
   ## cost_dt_row a row of the literature extract
   ## column_ref_cost the column with the "to_cost" to be adjusted
   ## inf_xch_dt is the exchange rate and inflation dataset created above
   ## needs currency_country dataset preloaded to run (see above in this script)
 
   #### first pulling out the data we need for conversions
-  iso <- as.character(cost_dt_row$iso3c) ## country of study 
+  iso <- as.character(cost_dt_row$iso3c) ## country of study
   from_cost <- cost_dt_row[[column_ref_cost]] ## cost to be adapted
   from_year <- as.numeric(cost_dt_row$cost_year) ## base year
   ## see if dates in set
-  from_year_data <- inf_xch_dt[date == from_year] ## from year financial data 
-  to_year_data <- inf_xch_dt[date == to_year] ## to year financial data 
+  from_year_data <- inf_xch_dt[date == from_year] ## from year financial data
+  to_year_data <- inf_xch_dt[date == to_year] ## to year financial data
   temp_iso_dt <- inf_xch_dt[iso3c==iso]  ## to be used in calculations below
-  
+
   `%!in%` <- Negate(`%in%`)
-  
+
   ## if to/from years not in the financial/economic datasets then use USD currency values
   if(from_year %!in% temp_iso_dt$date|to_year %!in% temp_iso_dt$date){
     cost_dt_row$currency_code <- "USD"
     temp_iso_dt <- inf_xch_dt[iso3c=="USA"]  ## replace xchange values
     cost_dt_row$iso3c <- "USD" ## match so the below formulae works (doesn't change dt values as only cost outputted from this function)
-    iso <- "USD" 
+    iso <- "USD"
      }
   if(cost_dt_row$iso3c=="EUSA"&cost_dt_row$cost_currency=="EUR"& cost_dt_row$who.region=="EURO"){
     #### IF iso3 is NA & COST_CURRENCY = EUR AND REGION = EURO
@@ -324,7 +322,7 @@ cost_adj_abx <- function(to_year,
       group_by(date, currency_code) %>%
       filter(row_number() == 1)%>% ## take just 1 per study + who.region/region combination
       as.data.table()
-    
+
     from_year_index <- euro_exchange[date == from_year]
     ## convert to EUR
     from_index_est <- from_cost*from_year_index$PA.NUS.FCRF
@@ -336,46 +334,46 @@ cost_adj_abx <- function(to_year,
     eur_usd_xc <- euro_exchange[date==to_year,"PA.NUS.FCRF"]
     to_cost <- as.numeric(to_index_est/eur_usd_xc)
   }
-  
+
   else if (cost_dt_row$iso3c!="EUSA"&cost_dt_row$cost_currency!=cost_dt_row$currency_code& cost_dt_row$cost_currency=="EUR"){
     ### IF iso3 != na and cost_currency!=currency_code & (currency = EUR)
-    ## convert to USD then to local currency 
+    ## convert to USD then to local currency
     euro_exchange <- inf_xch_dt[currency_code=="EUR"]
     ## get so just one per year
     euro_exchange <- euro_exchange %>%
       group_by(date, currency_code) %>%
       filter(row_number() == 1)%>% ## take just 1 per study + who.region/region combination
       as.data.table()
-    
+
     eur_usd_xc <- euro_exchange[date==from_year,"PA.NUS.FCRF"]
     usd_lcu_xc <- inf_xch_dt[date==from_year &
                                iso3c==iso,"PA.NUS.FCRF"]
     xc_cost <- as.numeric(from_cost*(1/eur_usd_xc)*usd_lcu_xc)
-    from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"] 
+    from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"]
     to_index <-   temp_iso_dt[temp_iso_dt$date == to_year, "NY.GDP.DEFL.ZS"]
     to_cost <- xc_cost * (to_index/from_index)
     ## then convert back to USD 2019
     usd_xc <-   temp_iso_dt[date==to_year,"PA.NUS.FCRF"]
     to_cost <- as.numeric(to_cost/usd_xc)
-  } 
-  else if (cost_dt_row$iso3c!="EUSA"& cost_dt_row$cost_currency!=cost_dt_row$currency_code& 
+  }
+  else if (cost_dt_row$iso3c!="EUSA"& cost_dt_row$cost_currency!=cost_dt_row$currency_code&
            cost_dt_row$cost_currency=="USD"){
     ### IF iso3 != na and cost_currency!=currency_code & (currency = US)
-    ## convert to local currency 
+    ## convert to local currency
     usd_lcu_xc <- inf_xch_dt[date==from_year &
                                iso3c==iso,"PA.NUS.FCRF"]
     xc_cost <- as.numeric(from_cost*usd_lcu_xc)
-    from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"] 
+    from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"]
     to_index <-   temp_iso_dt[temp_iso_dt$date == to_year, "NY.GDP.DEFL.ZS"]
     to_cost <- xc_cost * (to_index/from_index)
     ## then convert back to USD 2019
     usd_xc <-   temp_iso_dt[date==to_year,"PA.NUS.FCRF"]
     to_cost <- as.numeric(to_cost/usd_xc)
-  } 
+  }
   else if (cost_dt_row$iso3c!="EUSA"&
            cost_dt_row$cost_currency==cost_dt_row$currency_code) {
     ### IF  iso3 != na and cost_currency==currency_code
-    from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"] 
+    from_index <- temp_iso_dt[temp_iso_dt$date == from_year, "NY.GDP.DEFL.ZS"]
     to_index <-   temp_iso_dt[temp_iso_dt$date == to_year, "NY.GDP.DEFL.ZS"]
     to_cost <- from_cost * (to_index/from_index)
     ## then convert to USD 2019
