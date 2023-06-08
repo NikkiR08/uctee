@@ -12,6 +12,7 @@ Imports:
     countrycode,
     data.table,
     dplyr,
-    wbstats
+    wbstats,
+    tidyverse
 RoxygenNote: 7.2.3
 Roxygen: list(markdown = TRUE)
